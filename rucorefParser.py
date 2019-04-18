@@ -1,13 +1,14 @@
 import json
 import re
+import codecs
 
-PATH_TO_COREF = "../rucoref/"
+PATH_TO_COREF = "../../rucoref/"
 PATH_TO_TEXTS = "rucoref_texts/"
 DOCS = "Documents.txt"
 GROUPS = "Groups.txt"
 TOKENS = "Tokens.txt"
 GROUPS_XML = "groups.xml"
-
+NOUN_STRING = "str:noun"
 
 class Word:
 
@@ -25,11 +26,11 @@ class Sign:
 
 class Sentence:
 
-    def __init__(self, num, ind, sign, ws, sn):
-        self.Id = num
+    def __init__(self, id_num, ind, sign, wds, sn):
+        self.Id = id_num
         self.Index = ind
         self.Sign = sign
-        self.Words = ws
+        self.Words = wds
         self.Signs = sn
 
 
@@ -42,9 +43,9 @@ class RelWord:
 
 class RelationPart:
 
-    def __init__(self, iwg, ws, ids, ia):
+    def __init__(self, iwg, wds, ids, ia):
         self.IdWordGroup = iwg
-        self.Words = ws
+        self.Words = wds
         self.IsDirectSpeech = ids
         self.IsAnaphor = ia
 
@@ -143,7 +144,7 @@ if __name__ == '__main__':
 
     with open(PATH_TO_COREF + GROUPS, 'r', encoding='utf-8') as f:
         for line in f:
-            if first == 1:
+            if first == 1:  # skip the line with description
                 first = 0
             else:
                 tmp = line.split('	')
@@ -183,7 +184,10 @@ if __name__ == '__main__':
                                 for sh in words_shifts:
                                     ws.append(word_in_documents[q[0]][sh])
 
-                                relation_parts[head_id].append(RelationPart(0, ws, 'false', 'false'))  # todo
+                                isAnaphoraFlag = 'false'
+                                if NOUN_STRING not in cur_attributes and NOUN_STRING not in anaphora_info[head_id][9]:
+                                    isAnaphoraFlag = 'true'
+                                relation_parts[head_id].append(RelationPart(0, ws, 'false', isAnaphoraFlag))  # todo isDirectSpeechFlag
                                 group_head[q[2]] = head_id
                                 group_queue.remove(q)
 
@@ -196,7 +200,10 @@ if __name__ == '__main__':
                             for sh in words_shifts:
                                 ws.append(word_in_documents[cur_doc_id][sh])
 
-                            relation_parts[head_id].append(RelationPart(0, ws, 'false', 'false'))  # todo
+                            isAnaphoraFlag = 'false'
+                            if NOUN_STRING not in cur_attributes and NOUN_STRING not in anaphora_info[head_id][9]:
+                                isAnaphoraFlag = 'true'
+                            relation_parts[head_id].append(RelationPart(0, ws, 'false', isAnaphoraFlag))  # todo isDirectSpeechFlag
                             group_head[cur_group_id] = head_id
 
     relation_info = {}  # doc_id -> relation_info
@@ -209,46 +216,9 @@ if __name__ == '__main__':
     #  todo visualization
 
     for doc in list_of_texts:
-        with open(doc[0] + '.json', 'w', encoding='cp1251') as fp:
+        with codecs.open('_{}'.format(doc[0] + '.json'), 'w', encoding="utf-8") as fp:
             print("try to make json for file " + doc[0])
             fp.write('"docInfo:"')
             json.dump(text_and_sentences[doc[0]], default=toJSON, fp=fp, ensure_ascii=False)
             fp.write(',"relInfo:"')
             json.dump(relation_info[doc[0]], default=toJSON, fp=fp, ensure_ascii=False)
-
-    # sent_num = 1
-    # for x in list_of_texts:
-    #    print(x[0])
-    #    f = open(PATH_TO_COREF+PATH_TO_TEXTS + x[1], 'r', encoding='utf-8')
-    #    text_tokens = f.readlines()
-    #    sentences = []
-    #    words = []
-    #    signs = []
-    #    sent_ind = 0
-    #    for y in text_tokens:
-    #        parsed_y = y.split()
-    #        if parsed_y.__len__() == 0:
-    #            if not (words.__len__() == 1 and signs.__len__() == 0):
-    #                sentences.append(Sentence(sent_num, sent_ind, signs[-1].Value, words, signs))
-    #                sent_ind = sent_ind + 1
-    #            words = []
-    #            signs = []
-    #        else:
-    #            if parsed_y[7] == 'PUNC':
-    #                signs.append(Sign(parsed_y[6], parsed_y[1]))
-    #            else:
-    #              words.append(Word(parsed_y[0], parsed_y[1]))
-    #    text_and_sentences.append([x[0], sentences])
-    #    print("Ok, file " + x[1] + " parsed")
-    #    sent_num = sent_num + 1
-
-    # fp = open('test.json', 'w', encoding='utf-8')
-    # words = []
-    # words.append(Word(111, "z"))
-    # words.append(Word(123, "aaa"))
-
-    # signs = []
-    # sentences = []
-    # sentences.append(Sentence(1234, 0, ".", words, signs))
-    # sentences.append(Sentence(1, 3, ".", words, signs))
-    # json.dump(sentences, default=toJSON, fp=fp)
